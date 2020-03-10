@@ -1,0 +1,112 @@
+---
+pdf_document: default
+author: "Chloe Smytheman"
+date: "3/8/2020"
+output: pdf_document
+title: "Old Faithful Geyser"
+html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Introduction:**
+
+Old Faithful Geyser in Yellowstone National Park has been observed and loved for over 100 years because of its regular and beautiful eruptions. Predicted eruption times are posted for the public. R.A.Hutchinson, a geologist at the park, collected measurements of the eruption duration (in minutes) and the time intervals before the next eruption (in minutes) over an 8-day period. The question at hand is whether eruption duration and interval between eruptions have a linear relationship. 
+
+**Statistical Procedures Used:**
+
+In this study, Old Faithful Geyser is being observed. Two quantitative variables are being measured (eruption duration and interval between eruption), both measured in minutes. 
+
+$H_0$: There is no linear relationship between eruption duration and interval between eruptions (slope equal to 0). 
+$H_A$: There is some linear relationship between eruption duration and interval between eruptions (slope not equal to 0).
+
+**Summary of Statistical Findings:**
+
+**Scope of Inference:**
+
+**Appendix:**
+```{r, include=FALSE}
+#setup
+old.faithful <- read.csv("C:/Users/chloe/Dropbox/Spring 2020/STAT 411/OldFaithfulData.csv")
+str(old.faithful)
+```
+
+```{r}
+# Fit SLR
+lm.out <- lm( INTERVAL ~ DURATION, data=old.faithful )
+  summary(lm.out)
+  confint(lm.out, level=0.95)
+```
+
+```{r}
+#Initial Visualization
+library(ggplot2)
+ggplot(old.faithful, aes(x=DURATION, y=INTERVAL))+
+  geom_point() + labs(title="Figure 1: Duration of Eruption vs. Time to Next Eruption")
+
+last_plot() + stat_smooth(method='lm', se=F)
+
+#Residual Plots
+lm.out.data<-data.frame(lm.out$model, 
+                        Fitted    = fitted.values(lm.out),
+                        Residuals = residuals(lm.out),
+                        std.resid = rstandard(lm.out),
+                        leverage  = hatvalues(lm.out),
+                        cooksd    = cooks.distance(lm.out))
+
+ggplot(lm.out.data, aes(x=Fitted, y=Residuals)) + geom_point() +
+   geom_hline(yintercept=0)+
+   stat_smooth(method='loess', se=F)+
+   labs(x = 'Fitted eruption intervals', y = 'Residual', 
+        title='Figure 2: Fitted vs Residual plot')
+        
+ggplot(lm.out.data, aes(sample=std.resid)) + geom_qq() + geom_qq_line() +
+  labs(title = 'Figure 3: Normal Q-Q Plot')
+
+ggplot(lm.out.data, aes(x=Fitted, y=sqrt(abs(std.resid)))) + geom_point() +
+   stat_smooth(method='loess', se=F)+
+   labs(title='Figure 4: Scale-Location plot')
+ 
+ggplot(lm.out.data, aes(x=leverage, y=std.resid)) + geom_point() +
+  geom_hline(yintercept=0) +
+  labs(title= 'Figure 5: Residuals vs Leverage Plot')
+```
+```{r}
+#additional plots
+ggplot(old.faithful, aes(x=DATE, y=INTERVAL))+geom_point()
+
+ggplot(old.faithful, aes(x=factor(DATE), y=INTERVAL))+
+   geom_boxplot()+geom_point()
+   
+ggplot(data.frame(old.faithful, id=1:nrow(old.faithful)),
+        aes(x=id, y=INTERVAL)) + geom_path()
+
+ggplot(data.frame(old.faithful, id=1:nrow(old.faithful)),
+        aes(x=id, y=INTERVAL)) + geom_path() + 
+        facet_grid(.~DATE, space='free_x', scales='free')+
+        scale_x_continuous(breaks=seq(0,nrow(old.faithful), by=5),
+                        minor_breaks=seq(1,nrow(old.faithful), by=1))
+
+# Plot of regression fit                        
+fit.data <- data.frame(DURATION = seq(min(old.faithful$DURATION), 
+                                      max(old.faithful$DURATION), 
+                                    length.out=100))
+fit.out<-predict(lm.out, newdata=fit.data, se.fit=T) # Estimates and SEs
+scheffe.mult<-sqrt(2*qf(0.95, df1=2, df2=105))       # Multiplier for CI
+   fit.data$INTERVAL<- fit.out$fit
+     # Simultaneous confidence bands (adjusted for mult comparisons)
+   fit.data$CI.lwr  <- fit.out$fit - scheffe.mult*fit.out$se.fit
+   fit.data$CI.upr  <- fit.out$fit + scheffe.mult*fit.out$se.fit
+     # Simultaneous prediction bands (adjusted for mult comparisons)
+   fit.data$PI.lwr<-fit.out$fit-scheffe.mult*sqrt(sigma(lm.out)^2+fit.out$se.fit^2)
+   fit.data$PI.upr<-fit.out$fit+scheffe.mult*sqrt(sigma(lm.out)^2+fit.out$se.fit^2)
+   
+ggplot(old.faithful, aes(x=DURATION, y=INTERVAL)) +  
+   geom_ribbon(data=fit.data, aes(ymin = PI.lwr, ymax=PI.upr),fill='green',alpha=0.1)+
+   geom_ribbon(data=fit.data, aes(ymin = CI.lwr, ymax=CI.upr),fill='blue',alpha=0.1)+
+   geom_line(data=fit.data, col='blue', size=1) + geom_point()
+```
+
+
