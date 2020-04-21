@@ -1,0 +1,25 @@
+---
+title: "STAT 411/511 - Assignment 13"
+author: "Your name"
+date: "Date"
+output: html_document
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE) 
+```
+
+#### Problem 11.24: Natal Dispersal Distances of Mammals
+Natal dispersal distances are the distances that juvenile animals travel from their birthplace to their adult home.  An assessment of the factors affecting dispersal distances is important for understanding population spread, recolonization, and gene flow - which are central issues for conservation of many vertebrate species.  To further understand the determinants of natal dispersal distances, reserarchers gathered data on body weight, diet type, and maximum natal dispersal distance for various animals.  Analyze the data to describe the distribution of maximum dispersal distance as a function body mass and diet type.  Does the relationship between maximum dispersal distance and body weight depend on diet?  Write a full statistical report describing your findings, paying special attention to assessing the assumptions of the model and the effect of influential points.
+
+```{r, eval=F}
+dispersal.data<-Sleuth3::ex1124
+str(dispersal.data)
+dispersal.data$logDist=log(dispersal.data$MaxDist)
+dispersal.data$logMass=log(dispersal.data$BodyMass)
+fit.logdisp=lm(logDist~logMass*Type,data=dispersal.data)
+par(mfrow=c(1,4))
+#plot(fit.logdisp)
+fit.logdisp.add=lm(logDist~logMass+Type,data=dispersal.data)
+anova(fit.logdisp.add,fit.logdisp)
+```
