@@ -1,0 +1,19 @@
+---
+title: "STAT 411/511 - Lab 14"
+author: "Your name"
+date: "Date"
+output: html_document
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE) 
+```
+
+#### Mortality and Air Pollution
+Sulfur dioxide is a toxis gas produced as a by-product of burning fossil fuels.  Sulfur dioxide emissions are linked to the production of acid rain, and have an adverse effect on both human health and the environment. An early study that linked air pollution levels to human mortality used data from 5 Standard Metropolitian Statistical Areas in the U.S. between 1959 and 1961.  Use these data to analyze whether relative pollution potential for sulfur dioxide (`SO2`) is associated with mortality after controlling for mean annual precipitation (`Precip`), and write a full statistical report of your findings.
+
+
+```{r, eval=T}
+pollution<-Sleuth3::ex1123
+str(pollution)
+```

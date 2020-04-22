@@ -15,11 +15,26 @@ Natal dispersal distances are the distances that juvenile animals travel from th
 ```{r, eval=F}
 dispersal.data<-Sleuth3::ex1124
 str(dispersal.data)
+pairs(dispersal.data[,c(2,3)])
 dispersal.data$logDist=log(dispersal.data$MaxDist)
 dispersal.data$logMass=log(dispersal.data$BodyMass)
+ggplot(dispersal.data,aes(x=logMass,y=logDist,col=Type))+geom_point()+stat_smooth(method='lm',se=F)
 fit.logdisp=lm(logDist~logMass*Type,data=dispersal.data)
+summary(fit.logdisp)
 par(mfrow=c(1,4))
-#plot(fit.logdisp)
+plot(fit.logdisp)
 fit.logdisp.add=lm(logDist~logMass+Type,data=dispersal.data)
+summary(fit.logdisp.add)
+plot(fit.logdisp.add)
 anova(fit.logdisp.add,fit.logdisp)
 ```
+```{r}
+dispersal.data$Type.1=ifelse(dispersal.data$Type=="H","H","C/O")
+ggplot(dispersal.data,aes(x=logMass,y=logDist,col=Type.1))+geom_point()+stat_smooth(method='lm',se=F)
+fit.logdisp.add2=lm(logDist~logMass+Type.1,data=dispersal.data)
+summary(fit.logdisp.add2)
+plot(fit.logdisp.add2)
+anova(fit.logdisp.add,fit.logdisp.add2)
+
+```
+
