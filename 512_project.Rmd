@@ -5,29 +5,53 @@ date: "2/17/2021"
 output: pdf_document
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE,warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r,fig.height=10,fig.width=20,echo=TRUE,eval=TRUE}
-library(tidyverse)
-library(dendextend)
-library(reshape2)
-library(tibble)
-library(purrr)
-library(ape)
-library(knitr)
-library(broom)
-library(caret)
-library(bnstruct)
-data<-read.csv("C:/Users/Nolan/Downloads/Data_Cortex_Nuclear.csv")
-#str(data)
-par(mfrow=c(3,3))
-for (i in 1:77)
-  {
-   boxplot(data[,i+1]~data$class,xlab="class",ylab="protein levels",na_)
-  title(main=names(data)[i+1])
-}
+***Introduction***
+
+**Data Description**
+
+We are looking at the mouse cortex protein expression dataset from Higuera C et. al(2015), where 77 cortex proteins were observed in a mouse model of down syndrome. Some mice were treated with metamine, a drug used to treat alzheimers, to show that learning can be recovered in down syndrome mice. Mice were either assigned to learn, where they were given context and then a shock, or not to learn, where they were only given a shock. This gives a total of 8 classes(2X2X2).There were 15 measurements for each protein, 38 control mice, and 34 down syndrome mice. The goal of this study is to see if there is a difference in protein expression levels across the different classes for the various proteins.
+
+```{r,eval=TRUE,echo=FALSE,warning=FALSE}
+suppressPackageStartupMessages(library(dendextend))
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(dendextend))
+suppressPackageStartupMessages(library(reshape2))
+suppressPackageStartupMessages(library(tibble))
+suppressPackageStartupMessages(library(purrr))
+suppressPackageStartupMessages(library(ape))
+suppressPackageStartupMessages(library(knitr))
+suppressPackageStartupMessages(library(broom))
+suppressPackageStartupMessages(library(caret))
+suppressPackageStartupMessages(library(bnstruct))
+suppressPackageStartupMessages(library(naniar))
+suppressPackageStartupMessages(library(RANN))
+data<-read.csv("C:/Users/Nolan/Documents/Data_Cortex_Nuclear.csv")
+```
+
+**Data exploration**
+
+```{r,eval=TRUE}
+dim(data)
+str(data[-c(2:78)])
+unique(data$class)
+names(data[c(2:78)])
+```
+As we can see, there are a lot(1080) of measurements for each of the 77 proteins. There are eight classes; combinations of Genotype, Treatment, and Behavior.
+
+Next to observe missing values.
+
+```{r}
+vis_miss(data)
+```
+
+As is observed in the plot of missing values, a few of the proteins towards the right of the plot are missing quite a few observations, so some data imputing must be done.
+
+
+```{r,fig.height=10,fig.width=20,echo=TRUE,eval=TRUE,echo=FALSE}
 data.col<-data[,2:78]
 data.knn<-preProcess(data.col,method=c("knnImpute"),k=20,knnSummary = mean)
 impute_info<-predict(data.knn,data.col,na.action=na.pass)
@@ -36,13 +60,72 @@ for(i in col.names$col){
  impute_info[i] <- impute_info[i]*data.knn$std[i]+data.knn$mean[i] 
 }
 Data<-data.frame(impute_info,data$class)
-#data.no.na<-na.omit(data)
-#data.nona<-apply(data,2,function(x){ifelse(sum(!is.na(x))<901,,)})
-# Data <- data %>%
-#   group_by(class) %>%
-#   mutate_each(funs(replace(., which(is.na(.)), mean(., na.rm=TRUE)))) %>%
-#   as.data.frame() 
+colnames(Data)[colnames(Data)=="data.class"]<-"class"
+```
 
+It would be useful to see the distribution of observations for the different proteins.
+
+```{r,fig.height=10,fig.width=20,echo=TRUE,eval=TRUE,echo=FALSE}
+par(mfrow=c(3,3))
+for (i in 1:77)
+  {
+   boxplot(data[,i+1]~data$class,xlab="class",ylab="protein levels")
+  title(main=names(data)[i+1])
+}
+```
+
+It looks like some proteins have quite a large difference in measurments across classes. It would make sense to fit multiple mean models to the different proteins to see if there is a difference.
+
+***H_null**: there are no diferrences in expression level mean between classes.*
+
+$$H_0: \mu_0=\mu_1 = \mu_2 = \mu_3 = \mu_4 = \mu_5 = \mu_6 = \mu_7 $$
+***H_alt**: there is at least one significant difference among the groups.*
+
+$$H_A: \mu_0 \neq \mu_1 \neq \mu_2 \neq \mu_3 \neq \mu_4 \neq \mu_5 \neq \mu_6 \neq \mu_7 \neq \mu_8$$
+
+**Model fitting**
+
+We fit a simple model to each protein : 
+
+$\mu${Protein|c-CS-m,c-SC-m,c-CS-s,c-SC-s,t-CS-m,t-SC-m,t-CS-s,t-SC-s}$=\beta_0 +\beta_1I_{c-SC-m}+\beta_2I_{c-CS-s}+\beta_3I_{c-SC-s}+\beta_4I_{t-CS-m}+\beta_5I_{t-SC-m}+\beta_6I_{t-CS-s}+\beta_7I_{t-SC-s}$
+
+`lm_herb1`: \[ I_{c-SC-m} = \begin{cases} 
+          1 & \text{if class is c-SC-m} \\
+          0 & \text{otherwise}
+       \end{cases}
+      \]
+      \[ I_{c-CS-s} = \begin{cases} 
+          1 & \text{if class is c-CS-s} \\
+          0 & \text{otherwise}
+       \end{cases}
+      \]
+      \[ I_{c-SC-s} = \begin{cases} 
+          1 & \text{if class is c-SC-s} \\
+          0 & \text{otherwise}
+       \end{cases}
+      \]
+      \[ I_{t-CS-m} = \begin{cases} 
+          1 & \text{if class is t-CS-m} \\
+          0 & \text{otherwise}
+       \end{cases}
+      \]
+      \[ I_{t-SC-m} = \begin{cases} 
+          1 & \text{if class is t-SC-m} \\
+          0 & \text{otherwise}
+       \end{cases}
+      \]
+      \[ I_{t-SC-m} = \begin{cases} 
+          1 & \text{if class is t-SC-m} \\
+          0 & \text{otherwise}
+       \end{cases}
+      \]
+      \[ I_{t-SC-s} = \begin{cases} 
+          1 & \text{if class is t-SC-s} \\
+          0 & \text{otherwise}
+       \end{cases}
+      \]
+  
+```{r,echo=TRUE,eval=TRUE,echo=FALSE,warning=FALSE}
 proteins <- names(Data[1:77])
 classes <- as.vector(unique(as.character(Data$class))) #creating list of classes names
 
@@ -56,19 +139,23 @@ names(AOV_df) <- c("Protein", "Var_expl", "p.value")
 alpha = 0.01
 
 for(i in 1:length(proteins)){
-  cat("#### ", proteins[i], "\n")
+  #cat("#### ", proteins[i], "\n")
   AOV <- aov_test(proteins[i])
   AOV_df$Protein[i] <- proteins[i]
   AOV_df$Var_expl[i] <- round(AOV$sumsq[1] / (AOV$sumsq[1] + AOV$sumsq[2]), 2)
   AOV_df$p.value[i] <- AOV$p.value
-  cat(paste0("Total variability: ", round(AOV$sumsq[1] + AOV$sumsq[2], 2)))
-  cat('\n\n')
-  cat(paste0("Percentage of explained variability for ", proteins[i], " mean differences: ", round(AOV$sumsq[1] * 100 / (AOV$sumsq[1] + AOV$sumsq[2]), 2), "%"))
-  cat('\n\n')
-  cat(paste0("P value for ", proteins[i], " mean differences: ", round(AOV$p.value[1], 5)))
-  cat('\n\n')
+  #cat(paste0("Total variability: ", round(AOV$sumsq[1] + AOV$sumsq[2], 2)))
+  #cat('\n\n')
+  #cat(paste0("Percentage of explained variability for ", proteins[i], " mean differences: ", round(AOV$sumsq[1] * 100 / (AOV$sumsq[1] + AOV$sumsq[2]), 2), "%"))
+  #cat('\n\n')
+  #cat(paste0("P value for ", proteins[i], " mean differences: ", round(AOV$p.value[1], 5)))
+  #cat('\n\n')
 }
+AOV_df
+```
 
+
+```{r,fig.height=10,fig.width=20,echo=TRUE,eval=TRUE}
 AOV_df$reject_null <- AOV_df$p.value < alpha
 alpha_adj <- alpha / length(unique(Data$class))*(length(unique(Data$class))-1)/2
 ```

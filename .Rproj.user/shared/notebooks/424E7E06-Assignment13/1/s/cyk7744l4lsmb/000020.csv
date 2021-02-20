@@ -1,0 +1,2 @@
+"0","dispersal.data$Type.1=ifelse(dispersal.data$Type==""H"",""H"",""C/O"")"
+"0","ggplot(dispersal.data,aes(x=logMass,y=logDist,col=Type.1))+geom_point()+stat_smooth(method='lm',se=F)"

@@ -7,6 +7,7 @@ output: html_document
 
 ```{r, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE) 
+library(ggplot2)
 ```
 
 #### Mortality and Air Pollution
@@ -16,4 +17,120 @@ Sulfur dioxide is a toxis gas produced as a by-product of burning fossil fuels. 
 ```{r, eval=T}
 pollution<-Sleuth3::ex1123
 str(pollution)
+
+pairs(pollution[,c('SO2','Mort','Precip')])
+
+(p1<-ggplot(pollution, aes(x=Mort, y=SO2))+geom_point())
+ p1+coord_trans(x='log',y='log')
+ p1+coord_trans(x='sqrt',y='sqrt')
+ p1+coord_trans(x='reciprocal',y='reciprocal')
+
+ lm.pollution=lm(Mort~SO2*Precip, data=pollution)
+summary(lm.pollution)
+
+pollution$lMort<-log(pollution$Mort)
+pollution$lSO2<-log(pollution$SO2)
+pollution$lPrecip<-log(pollution$Precip)
+pollution$sqrtSO2<-sqrt(pollution$SO2)
+
+ lm.pollutionlSO2<-lm(Mort~lSO2*Precip,data=pollution)
+summary(lm.pollutionlSO2)
+
+lm.pollution.add<-lm(Mort~lSO2+Precip,data=pollution)
+summary(lm.pollution.add)
+par(mfron=c(1,4))
+plot(lm.pollution.add)
+
+polution<-pollution[-60,]
+lm.pollution.add_2<-lm(Mort~lSO2+Precip,data=polution)
+plot(lm.pollution.add_2)
+summary(lm.pollution.add_2)
+
+newx<-expand.grid()
+wch<-c(1,3)
+pres<-polution$Mort-model.matrix(lm.pollution.add_2)[,wch]%*%coef(lm.pollution.add_2)[wch]
+
+ggplot(data.frame(polution,pres),aes(x=lSO2,y=pres))+stat_smooth(method='loess', se=F, size=0.5, linetype='dashed')+
+   geom_point()
+```
+```{r}
+res<-residuals(lm.pollution.add_2,"partial")
+vshift<-attr(res,"constant")
+par(mfrow=c(1,2))
+plot(polution$lSO2,res[,"lSO2"])
+plot(polution$Precip,res[,"Precip"])
+
+wch<-c(1,3)
+pres<-polution$Mort-model.matrix(lm.pollution.add_2)[,wch]%*%coef(lm.pollution.add_2)[wch]
+fits<-expand.grid(lSO2=quantile(polution$lSO2,seq(0,1,length=101)),Precip=quantile(polution$Precip,seq(0,1,length=101)))
+fit<-predict(lm.pollution.add_2, newdata=fits, se.fit =T)
+k<-length(coef(lm.pollution.add_2))
+fmult<-sqrt(2*qf(0.95, k, fit$df)) # Scheffe multiplier
+
+newxy<-data.frame(fits,Mort=fit$fit,CI.lwr=fit$fit - fmult*fit$se.fit,
+                  CI.upr=fit$fit + fmult*fit$se.fit,
+                  PI.lwr=fit$fit - fmult*sqrt(fit$res^2 + fit$se.fit^2),
+                  PI.upr=fit$fit - fmult*sqrt(fit$res^2 + fit$se.fit^2))
+ggplot(data.frame(polution,pres),aes(x=lSO2,y=pres))+stat_smooth(method='loess', se=F, size=0.5, linetype='dashed')+
+   geom_point()+geom_ribbon(data=subset(newxy, Precip==38), 
+    aes(x=lSO2, y=Mort, ymax=CI.upr, ymin=CI.lwr), col=NA, alpha=0.1)+
+  geom_line(data=subset(newxy, Precip==38), 
+                  aes(x=lSO2, y=Mort), col='blue')
+```
+
+```{r}
+par(mfrow=c(1,2))
+scatter.smooth(pollution$lSO2, residuals(lm.pollution.add))
+text(pollution$lSO2[60], residuals(lm.pollution.add)[60],labels = "60")
+scatter.smooth(pollution$Precip, residuals(lm.pollution.add))
+text(pollution$Precip[60], residuals(lm.pollution.add)[60],labels = "60")
+
+par(mfrow=c(1,3))
+scatter.smooth(pollution$Precip,pollution$Mort)
+text(pollution$Precip[60],pollution$Mort[60],labels=60,adj = 1,1)
+scatter.smooth(pollution$lSO2,pollution$Precip)
+text(pollution$lSO2[60],pollution$Precip[60],labels=60,adj = 1,1)
+scatter.smooth(pollution$lSO2,pollution$Mort)
+text(pollution$lSO2[60],pollution$Mort[60],labels=60,adj = 1,1)
+
+(p1<-ggplot(pollution, aes(x=lSO2, y=Mort))+geom_point())+geom_text(aes(x=lSO2[60],y=Mort[60],label=60),hjust=-.5, vjust=-.5)
+pairs(pollution[,c('Mort','lSO2','Precip')])
+
+par(mfrow=c(1,4),ask=F)
+plot(lm.pollution.add)
+
+res<-residuals(lm.pollution.add_2,"partial")
+vshift<-attr(res,"constant")
+par(mfrow=c(1,2))
+plot(polution$lSO2,res[,"lSO2"])
+plot(polution$Precip,res[,"Precip"])
+
+
+fits<-expand.grid(lSO2=quantile(polution$lSO2,seq(0,1,length=101)),Precip=quantile(polution$Precip,seq(0,1,length=101)))
+fit<-predict(lm.pollution.add_2, fits, se=T)
+k<-length(coef(lm.pollution.add_2))
+fmult<-sqrt(2*qf(0.95, k, fit$df)) # Scheffe multiplier
+
+newxy<-data.frame(fits,Mort=fit$fit,CI.lwr=fit$fit - fmult*fit$se.fit,
+                  CI.upr=fit$fit + fmult*fit$se.fit,
+                  PI.lwr=fit$fit - fmult*sqrt(fit$res^2 + fit$se.fit^2),
+                  PI.upr=fit$fit - fmult*sqrt(fit$res^2 + fit$se.fit^2))
+
+fits$Mort<-fit$fit
+  fits$CI.lwr<-fit$fit - fmult * fit$se.fit
+  fits$CI.upr<-fit$fit + fmult * fit$se.fit
+  fits$PI.lwr<-fit$fit - fmult * sqrt(sigma(lm.pollution.add)^2 + fit$se.fit^2)
+  fits$PI.upr<-fit$fit + fmult * sqrt(sigma(lm.pollution.add)^2 + fit$se.fit^2)
+
+  ggplot(subset(fits, lSO2==median(polution$lSO2)), aes(x=Precip, y=Mort))+
+ geom_ribbon(aes(ymin=CI.lwr, ymax=CI.upr),col=NA, alpha=0.1)+
+ geom_line() +
+ #geom_point(data=data.frame(ldebt=DF$ldebt, ldf=pres.ldebt+8.5))
+ geom_point(data=data.frame(Precip=polution$Precip, Mort=(res[,"Precip"]+vshift)))+geom_text(aes(x=Precip[60],y=Mort[60],label=60),hjust=-.5, vjust=-.5)
+ 
+ggplot(subset(fits, Precip==median(polution$Precip)), aes(x=lSO2, y=Mort))+
+ geom_ribbon(aes(ymin=CI.lwr, ymax=CI.upr),col=NA, alpha=0.1)+
+ geom_line() +
+ geom_point(data=data.frame(lSO2=polution$lSO2, Mort=(res[,"lSO2"]+vshift))) + geom_text(aes(x=lSO2[60],y=Mort[60],label=60),hjust=-.5, vjust=-.5)
+
 ```

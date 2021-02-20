@@ -1,0 +1,99 @@
+---
+title: "STAT 411/511 - Final Stats Report"
+author: "Your name"
+date: "Date"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE) 
+library(ggplot2)
+```
+
+#### Education versus Income
+For the final stats report, we will return to the National Longitudinal Youth Survey dataset.  See Ch 12, Problems 23-24 (and Display 12.20) for a thorough description of the variables included in this dataset.  
+
+From the Sleuth: "In their 1994 book, The Bell Curve: Intelligence and Class Structure in American Life, psychologist Richard Herstein and political scientist Charles Murray arged that a person's intelligence is a better predictor of success in life than is education and family's socioeconomic status.   The book was controversial modely for its conclusions about intelligence and racec, but also for the strength of its conclusions drawn from regression analysis on observational data with imperfect measures of intelligence and socioeconomic statis."
+
+Previously, we used these data to model effects of education level and AFQT score on income in 2005.  Now, I would like you to focus on whether we see an effect of race or gender on income levels, after controlling for education level. To accomplish this, we will combine race and gender variables in the income dataset into a single categorical "Group" variable (See R code below).  
+
+
+```{r, eval=T, echo=F}
+Inc<-Sleuth3::ex1223
+  # Response variable
+   Inc$Income<-Inc$Income2005 
+   # Main explanatory variables
+   #Inc$Educ 
+   Inc$Group <- paste(Inc$Race, Inc$Gender)
+   Inc$Group<-as.factor(Inc$Group)
+   levels(Inc$Group)<-factor(c("1F","1M","2F","2M","3F","3M"))
+```
+```{r}
+Inc$Income<-Inc$Income2005 
+
+####### Just a few plots to see if data needed transformin
+(p1<-ggplot(Inc,aes(x=Group,y=Income,col=Educ,fill=Educ))+geom_point())
+p1+coord_trans(y="log")
+p1+coord_trans(y='sqrt')
+MASS::boxcox(Income~Group, data=Inc,lambda=seq(.2,.4,length.out = 100))
+pairs(Inc[,c('Income','Educ')])
+
+### Income def needs transforming, went with a log
+Inc$logInc<-log(Inc$Income)
+lm.Int1<-lm(logInc~Group*Educ,data = Inc) ## interaction model
+summary(lm.Int1)
+lm.add1<-lm(logInc~Group+Educ,data=Inc)### additive model
+summary(lm.add1)
+confint(lm.add1)
+anova(lm.Int1,lm.add1) ## model comparisons, going with additive since they're not sig diff
+lm.Male2<-lm(logInc~Educ+I(Group=="1M")+I(Group=="2M")+I(Group=="3M"),data=Inc)
+lm.Male<-lm(logInc~Educ+Group,data=subset(Inc,Group==c("1M","2M","3M")))
+
+```
+```{r}
+par(mfrow=c(2,2))
+#plot(lm.Int1)
+plot(lm.add1) ## diagnostics
+
+## helps visualize different incomes by group or education
+Inc$ED<-factor(ifelse(Inc$Educ < 12, 'L',
+                ifelse(Inc$Educ <= 16, 'M', 'H')), levels=c('L','M','H'))
+ggplot(Inc,aes(x=Group,y=logInc))+geom_point()+facet_wrap(.~ED,nrow=3)+stat_smooth(method='lm',se=F)
+ggplot(Inc,aes(x=Educ,y=logInc))+geom_point()+facet_wrap(.~Group,nrow=3,ncol=3)+stat_smooth(method='lm',se=F)
+
+## nvmnd these 
+par(mfrow=c(1,2))
+hist(rstandard(lm.add1), freq=F, col='grey', xlim=c(-3,3))
+curve(dnorm, xlim=c(-3,3), add=T, lwd=2, col='blue')
+plot(lm.add1, which=2) 
+
+par(mfrow=c(1,2))
+hist(residuals(lm.Int1), freq=F, col='grey', xlim=c(-8,4))
+curve(dnorm, xlim=c(-8,4), add=T, lwd=2, col='blue')
+plot(lm.Int1, which=2) 
+##
+
+### visualize mean income for different groups
+par(mfrow=c(1,1))
+boxplot(Inc$logInc~Inc$Group)
+```
+
+```{r fig.width=10, fig.height=5}
+## income for groups after controlling for education, doesn't show much of a difference
+## think this means that after controlling for education the pattern between income and group
+## doesn't change much
+wch<-c(1,7)
+partial.res<-Inc$logInc-model.matrix(lm.add1)[,wch]%*%coef(lm.add1)[wch]
+ggpubr::ggarrange(
+   ggplot(Inc,aes(x=Group,y=logInc,col=Educ,fill=Educ))+geom_point(),
+   
+ggplot(data.frame(Inc,partial.res),aes(x=Group,y=partial.res,))+stat_smooth(method='loess', se=F, size=0.5, linetype='dashed')+
+   geom_point(),ncol=2)
+```
+```{r}
+
+```
+
+

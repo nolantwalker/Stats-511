@@ -1,0 +1,3 @@
+"0","dispersal.data$logDist=log(dispersal.data$MaxDist)"
+"0","dispersal.data$logMass=log(dispersal.data$BodyMass)"
+"0","ggplot(dispersal.data,aes(x=logMass,y=logDist,col=Type))+geom_point()+stat_smooth(method='lm',se=F)"
