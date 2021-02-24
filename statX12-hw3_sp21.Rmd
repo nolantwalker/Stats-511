@@ -1,0 +1,130 @@
+---
+title: "STAT X12: HW #3"
+author: ALL OF YOUR GROUP MEMBER'S NAMES HERE
+date: "Due March 1, 2021, _end of the day_"
+output:
+  pdf_document: default
+fontsize: 12 pt
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(show.signif.stars = FALSE)
+```
+
+## HW 3 Instructions:
+
+Work in your group to complete this assignment. _Note, what follows is the same information that is in the "group work structure" document on D2L._ There are several phases before submitting the final draft of group solutions and responses to the homework questions. Please follow these directions when completing any group homework assignment.
+
+1. __Individual Work:__ Read through the entire homework assignment and think about and try to answer each of the questions on your own.
+2. __Sharing and Collaborating with Group Members:__ Discuss your ideas, strategies, and approaches with other group members. Each group may differ in how they choose to share with one another; please use what works best for all members of your group. For example, sharing with one another may entail using Google docs, meeting over Zoom or MS Teams, and/or seeking other modalities. During this process, the designated facilitator is responsible for coordinating meetings, facilitating discussion and participation by all group members, and summarizing the group’s collaborations while completing the assignment.
+
+3. __Compile a Draft of the Homework Solutions:__ After discussing the problems and agreeing upon which approach(es) to use (including R code!), the compiler gets to compile the group's chosen approaches and solutions into one file that will be submitted for grading. This file may be created by typing in compiling code in RMardown or another word processing document (LaTeX, Microsoft Word, etc.) and then exporting it to share within your group's chosen collaboration space (e.g., MSTeams channel). Handwritten solutions to problems are accepted except when noted, but turned in work needs to be organized and legible. Writing that is too hard to read will not receive credit.
+
+4. __Review the Homework Solutions Draft:__ After a draft of the homework solutions has been made, the reviewer gets to review the document the compiler created, making edits and changes as necessary before turning in the final version of the group’s worked solutions. 
+
+5. __Summarize Group Collaborations:__ Once your group is satisfied with the homework solutions document, the facilitator should write a summary (1-2  brief paragraphs) of how the group collaborated while completing the assignment. Please include the statement at the end of the final homework solutions document.
+
+6. __Submit Final Version of the Homework Solutions:__ To submit the final version of your group's homework solutions, make sure the file is submitted to the Assignments folder for the assignment. Please email the instructor (katharine.banner```montana.edu) if you have any questions or encounter any issues.
+
+The same process will be used for each homework assignment this semester. The only difference is that the "compiler," "reviewer," and "facilitator" roles should rotate across group members for the different homework assignments so that everyone has an opportunity to assume each role multiple times during the semester. Because all homework will be completed in groups, please communicate well with one another and establish group work guidelines and procedures that will help foster productive collaborations and deeper learning. __For groups of 2 or 4, make reasonable decisions about how to split up roles or allocate an extra person to a role. The appropriateness of this will be context dependent and is up to you to decide within your group -- reach out to Katie if you would like help.__
+
+_PLEASE DELETE INSTRUCTIONS BEFORE TURNING IN_
+
+
+## Gender Differences in Performance on Mathematics Achievement Tests
+
+Data set on 861 ACT Assessment Mathematics Usage Test scores from 1987. The test was given to a sample of high school seniors who met one of three profiles of high school mathematics course work: (a) Algebra I only; (b) two Algebra courses and Geometry; and (c) two Algebra courses, Geometry, Trigonometry, Advanced Mathematics and Beginning Calculus. 
+These data were generated from summary statistics for one particular form of the test as reported by Doolittle (1989). 
+_Source:_ Ramsey, F.L. and Schafer, D.W. (2002). _The Statistical Sleuth: A Course in Methods of Data Analysis (2nd ed)}, Duxbury_ 
+
+
+```{r start, message=FALSE,warning=FALSE} 
+options(show.signif.stars = F)
+library(Sleuth3)
+library(mosaic)
+math <- ex1320
+names(math)
+```
+
+1. Create summary statistics, an appropriate raw-data visualization, and interaction plots for these data. What do the summary statistics tell you about the design? 
+
+```{r,echo=FALSE}
+suppressMessages(library(ggplot2))
+suppressMessages(library(yarrr))
+suppressMessages(library(dplyr))
+suppressMessages(library(GGally))
+suppressMessages(library(stats))
+```
+
+
+```{r,eval=TRUE}
+summary(math)
+ggplot(data=math) +
+  geom_boxplot(mapping = aes(x=Sex,y=Score,fill=Background))
+pirateplot(Score~Background,data=math)
+```
+
+
+2. What do the plots you made above tell you about the relationships between _Sex_ and _Background_ and average ACT scores?
+
+A background of c predicts a higher score than the other two backgrounds, while test takers in the background group a had the lowest average score. Sex does not appear to have any relationship with Score. 
+
+3. What does the interaction plot tell you about the way _Sex_ and _Background_ are related?
+
+```{r}
+with(math, {
+interaction.plot(Background,Sex,Score,fun = mean,type='o')})
+```
+The interaction plot shows that there seems to be an additive effect for the male group on Scores that is the same for all backgrounds.
+
+4. Write out the two-way ANOVA interaction model in the regression parameterization. Define all indicator variables.  
+
+$\mu${Score|Background,Score}$=\beta_0+\beta_2I_{sex=male}+\beta_2I_{background=b}+\beta_3I_{background=c}+\beta_4I_{sex=male}I_{background=b}+\beta_5I_{sex=male}I_{background=c}$
+
+5. Fit the saturated two-way ANVOA model, and create the ANOVA table. 
+
+```{r,eval=TRUE}
+anova1<-lm(Score~Sex*Background,data=math)
+summary(anova1)
+anova(anova1)
+```
+
+    a. Which test should you look at first?
+      The interaction
+    b. What is the distribution of the test statistic under the null hypothesis for this test? Use the `curve` function to plot the _null sampling distribution_ for this test statistic. _Hint, to plot an $F_{3, 24}$ distribution across the values of 0 to 24, use `curve(df(x, 3, 24), from = 0, to = 24)`.
+    c. What is the value of the statistic? Add a vertical line to your curve where the observed test statistic is using `abline(v = VALUE OF TS)` 
+    d. What is the p-value? Interpret the $p-value$ in the context of the problem
+    e. Write a conclusion about the hypothesis test you just conducted in the context of the problem. 
+```{r}
+    curve(df(x,2,855),from =0,to=24)
+abline()
+```
+
+6. Which anova function will guarantee the appropriate F-tests? Why?
+
+7. The type II sums of squares ANOVA table is given below: 
+
+```{r anovaMath2}
+suppressMessages(library(car))
+fit_math_add <- lm(Score ~ Background + Sex, 
+                   data = math)
+Anova(fit_math_add)
+```
+
+
+For the _Background_ row of the ANOVA table: 
+
+a. What null hypothesis is being tested? 
+b. Write a summary of statistical findings
+
+For the _Sex_ row of the ANOVA table:
+a. What null hypothesis is being tested? 
+b. Write a summary of statistical findings
+
+
+8. Assess the assumptions and conditions of the ANOVA tests you conducted. Be sure to state why (or why not) each assumption is not severely violated and refer to the correct plot for assessing each assumption!
+
+9. Create an effects plot and write a conclusion addressing the research questions, "Is there a relationship between _Sex_, _Background_, and average test score within this sample of high school seniors?" Which combination of _Background_ and _Sex_ had the highest average score? What is the estimated value for the highest mean score, include a 90% CI and interpretation (_Hint: you can address this question using a contrast_). 
+ 
+
