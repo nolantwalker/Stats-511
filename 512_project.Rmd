@@ -2,7 +2,10 @@
 title: "512 Project"
 author: "Nolan Walker"
 date: "2/17/2021"
-output: pdf_document
+output:
+  pdf_document: 
+    extra_dependencies: ["multirow"]
+  word_document: default
 ---
 
 ```{r setup, include=FALSE,warning=FALSE}
@@ -12,6 +15,30 @@ knitr::opts_chunk$set(echo = TRUE)
 ***Introduction***
 
 **Data Description**
+
+Intellectual disabilities (ID) are a class of disabilities that restrict the abilities of those affected to learn normally and be self sufficient requiring special care.  Down syndrome (DS) is an ID characterized by mental and physical disabilities. DS is caused by an extra copy of chromosome 21 (trisomy 21), which results in the overexpression of about 50% of 310 genes. The mental capabilities of persons with DS are typically equal to an 8 or 9 year old, with limited ability to learn and IQ’s in the 40s and 50s. Individuals with DS can live into their 50s-70s with proper healthcare in which case they usually develop Alzheimer’s disease (AD).  I will be analyzing nuclear protein expression levels in the cortex and hippocampus of down syndrome mice. 
+The data comes from a study that observed the effect of memantine, a drug used in the treatment of AD, on the expression of nuclear protein levels in the cortex of Ts65Dn and wild type mice to observe which proteins are associated with learning. The mice were exposed to an electric shock and given a context clue before or after the shock to induce a learned fear response. There were 15 measurements for each protein for the 38 wild type and 34 down syndrome mice, equaling 15*38+15*34=1080 measurements in total. The data contain measurements of NDMA receptor proteins, mTOR complex proteins, and MAP kinase proteins. NMDA receptors are an ion channel found in nerve cells that are non selective to cations, are thought to be important in neural plasticity, and are also an antagonist of Memantine (meaning that memantine may block the flow of ions). MTOR is a serine/threonine amino acid kinase(catalyzes the addition of a phosphate to a molecule), which is important in cell proliferation, movement, and survival, autophagy(self degradation), protein synthesis, and transcription(gene decoding). MAP kinases are a serine/threonine protein kinase which are important in cell regulation, differentiation, apoptosis (cell programmed death), and gene expression.
+
+\begin{center}
+\begin{tabular}{ |c|c|c|c|c| } 
+\hline
+Mouse litter & Drug treatment & Control-Shock & Shock-Control \\
+\hline
+\multirow{2}{4em}{TS65DN} & Saline & t-CS-m & t-SC-s \\
+\hline
+& Memantine & t-Cs-m & t-Sc-m \\
+\hline
+\multirow{2}{4em}{Control}& Saline & c-Cs-s & c-Sc-s\\ 
+\hline
+& Memantine & c-Cs-m & c-Sc-m\\
+\hline
+\end{tabular}
+\end{center}
+
+     Table 1: Experiment Design categories
+
+	The question of interest for this study is are proteins expressed at different levels across the two myce types, what are the proteins that are expressed differently, and does the drug memantine return those proteins to the levels in the normal mice.  I plan to fit multiple linear combinations of means model to the various proteins and compare to explain the difference in protein’s expression levels across the varying mouse models conditions and treatments. 
+
 
 We are looking at the mouse cortex protein expression dataset from Higuera C et. al(2015), where 77 cortex proteins were observed in a mouse model of down syndrome. Some mice were treated with metamine, a drug used to treat alzheimers, to show that learning can be recovered in down syndrome mice. Mice were either assigned to learn, where they were given context and then a shock, or not to learn, where they were only given a shock. This gives a total of 8 classes(2X2X2).There were 15 measurements for each protein, 38 control mice, and 34 down syndrome mice. The goal of this study is to see if there is a difference in protein expression levels across the different classes for the various proteins.
 
@@ -29,33 +56,62 @@ suppressPackageStartupMessages(library(caret))
 suppressPackageStartupMessages(library(bnstruct))
 suppressPackageStartupMessages(library(naniar))
 suppressPackageStartupMessages(library(RANN))
-data<-read.csv("C:/Users/Nolan/Documents/Data_Cortex_Nuclear.csv")
+data<-read.csv("C:/Users/Nolan/Downloads/Data_Cortex_Nuclear.csv")
 ```
 
 **Data exploration**
 
 ```{r,eval=TRUE}
+print("Dataframe dimensions:")
+cat('\n')
 dim(data)
+cat('\n\n')
+print("DataFrame structure:")
+cat('\n')
 str(data[-c(2:78)])
+cat('\n\n')
+print("Variables")
+cat('\n')
+names(data[-c(2:78)])
+cat('\n\n')
+print("Genotypes:")
+cat('\n')
+unique(data$Genotype)
+cat('\n\n')
+print("Treatments:")
+cat('\n')
+unique(data$Treatment)
+cat('\n\n')
+print("Behaviors:")
+cat('\n')
+unique(data$Behavior)
+cat('\n\n')
+print("Classes:")
+cat('\n')
 unique(data$class)
+cat('\n\n')
+print("Proteins:")
+cat('\n')
 names(data[c(2:78)])
 ```
-As we can see, there are a lot(1080) of measurements for each of the 77 proteins. There are eight classes; combinations of Genotype, Treatment, and Behavior.
+
+As we can see, there are a lot (1080) of measurements for each of the 77 proteins. There are eight classes: combinations of Genotype's, Treatments, and Behaviors.
 
 Next to observe missing values.
 
 ```{r}
-vis_miss(data)
+vis_miss(data) # plot of missing values
 ```
 
 As is observed in the plot of missing values, a few of the proteins towards the right of the plot are missing quite a few observations, so some data imputing must be done.
 
 
 ```{r,fig.height=10,fig.width=20,echo=TRUE,eval=TRUE,echo=FALSE}
+## data imputing
 data.col<-data[,2:78]
-data.knn<-preProcess(data.col,method=c("knnImpute"),k=20,knnSummary = mean)
-impute_info<-predict(data.knn,data.col,na.action=na.pass)
-col.names <- data.frame(col = names(data.knn$mean), mean = data.knn$mean, sd = data.knn$std)
+data.knn<-preProcess(data.col,method=c("knnImpute"),k=20,knnSummary = mean) #knn imputing data
+impute_info<-predict(data.knn,data.col,na.action=na.pass) # predicting knn imputing values 
+col.names <- data.frame(col = names(data.knn$mean), mean = data.knn$mean, sd = data.knn$std) # data frame with class labels
 for(i in col.names$col){
  impute_info[i] <- impute_info[i]*data.knn$std[i]+data.knn$mean[i] 
 }
@@ -65,18 +121,68 @@ colnames(Data)[colnames(Data)=="data.class"]<-"class"
 
 It would be useful to see the distribution of observations for the different proteins.
 
-```{r,fig.height=10,fig.width=20,echo=TRUE,eval=TRUE,echo=FALSE}
-par(mfrow=c(3,3))
-for (i in 1:77)
-  {
-   boxplot(data[,i+1]~data$class,xlab="class",ylab="protein levels")
-  title(main=names(data)[i+1])
-}
+```{r,eval=TRUE}
+# boxplots of data
+
+combined_proteins<-melt(data=Data,id.vars = c("class"))
+# print("ggplot")
+# cat("\n")
+# ggplot(data=combined_proteins)+
+#   geom_boxplot(mapping=aes(class,value)) # box plot of all values by class
+# cat("\n")
+print("base")
+cat("\n")
+boxplot(value~class,data=combined_proteins,xlab = "class",ylab="protein levels") # boxplot of all values by class
+title(main="Protein expression levels by class(all proteins combined)")
+cat("\n")
+
+##next boxplot of averages of protein values for each class 
+# data_combined<-matrix(,ncol=78,nrow=8)
+# for (i in 1:77){
+#   data_combined[,i]<-mean(Data[,i]~Data$class)
+# }
+# classes<-names(mean(Data[,1]~Data$class))
+# dim(data_combined)
+# data_combined[,78]<-classes
+# colnames(data_combined)[colnames(data_combined)=="V78"]<-"class"
 ```
 
-It looks like some proteins have quite a large difference in measurments across classes. It would make sense to fit multiple mean models to the different proteins to see if there is a difference.
 
-***H_null**: there are no diferrences in expression level mean between classes.*
+```{r}
+# data_combined<-melt(data_combined,id.vars=c("class"))
+# for (i in 1:624){
+#   id<-data_combined[i,1]
+#   data_combined[i,1]<-classes[as.numeric(id)]
+# }
+# data_combined<-subset(data_combined,select = -Var2)
+# print("plots of all average expressions by protein")
+# cat("\n")
+# print("base")
+# cat("\n")
+# boxplot(as.numeric(data_combined$value)~data_combined$Var1,ylab = "protein expression",xlab="class")
+# title(main="Protein expression levels by class(combined class averages for each protein)")
+# cat("\n")
+# print("ggplot")
+# cat("\n")
+# ggplot(data_combined)+
+#   geom_boxplot(mapping=aes(Var1,as.numeric(value))) +
+#   xlab("class") +
+#   ylab("protein expression") +
+#   ggtitle("Protein expression levels by class(combined class averages for each protein")
+```
+
+```{r,fig.height=10,fig.width=20,echo=TRUE,eval=TRUE,echo=FALSE}
+# boxplots for each protein of expression level by class
+par(mfrow=c(3,3))
+for (i in 1:9){
+   boxplot(data[,i+1]~data$class,xlab="class",ylab="protein levels")
+  title(main=names(data)[i+1])}
+
+```
+
+It looks like some proteins have quite a large difference in measurements across classes. It would make sense to fit multiple mean models to the different proteins to see if there is a difference.
+
+***H_null**: there are no differences in expression level mean between classes.*
 
 $$H_0: \mu_0=\mu_1 = \mu_2 = \mu_3 = \mu_4 = \mu_5 = \mu_6 = \mu_7 $$
 ***H_alt**: there is at least one significant difference among the groups.*
