@@ -1,0 +1,18 @@
+---
+title: "512 project"
+author: "Nolan Walker"
+date: "2/10/2021"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+data<- read.csv("Data_Cortex_Nuclear.csv",header = TRUE)
+boxplot(pMTOR_N~class,data=data)
+boxplot(CDK5_N~class,data=data)
+boxplot(DYRK1A_N~class,data=data)
+```
+
